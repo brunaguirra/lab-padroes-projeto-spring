@@ -1,5 +1,6 @@
 package one.digitalinnovation.gof.service.impl;
 
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,49 +36,76 @@ public class ClienteServiceImpl implements ClienteService {
 
 	@Override
 	public Iterable<Cliente> buscarTodos() {
-		// Buscar todos os Clientes.
 		return clienteRepository.findAll();
 	}
 
 	@Override
 	public Cliente buscarPorId(Long id) {
-		// Buscar Cliente por ID.
+		if (id == null || id <= 0) {
+			throw new IllegalArgumentException("ID de cliente inválido: " + id);
+		}
+
 		Optional<Cliente> cliente = clienteRepository.findById(id);
-		return cliente.get();
+		if (cliente.isPresent()) {
+			return cliente.get();
+		} else {
+			throw new NoSuchElementException("Cliente não encontrado para o ID: " + id);
+		}
 	}
 
 	@Override
 	public void inserir(Cliente cliente) {
+		if (cliente == null) {
+			throw new IllegalArgumentException("Cliente não pode ser nulo");
+		}
+
 		salvarClienteComCep(cliente);
 	}
 
 	@Override
 	public void atualizar(Long id, Cliente cliente) {
-		// Buscar Cliente por ID, caso exista:
+		if (id == null || id <= 0) {
+			throw new IllegalArgumentException("ID de cliente inválido: " + id);
+		}
+
+		if (cliente == null) {
+			throw new IllegalArgumentException("Cliente não pode ser nulo");
+		}
+
 		Optional<Cliente> clienteBd = clienteRepository.findById(id);
 		if (clienteBd.isPresent()) {
 			salvarClienteComCep(cliente);
+		} else {
+			throw new NoSuchElementException("Cliente não encontrado para o ID: " + id);
 		}
 	}
 
 	@Override
 	public void deletar(Long id) {
-		// Deletar Cliente por ID.
+		if (id == null || id <= 0) {
+			throw new IllegalArgumentException("ID de cliente inválido: " + id);
+		}
+
 		clienteRepository.deleteById(id);
 	}
 
 	private void salvarClienteComCep(Cliente cliente) {
-		// Verificar se o Endereco do Cliente já existe (pelo CEP).
+		if (cliente == null) {
+			throw new IllegalArgumentException("Cliente não pode ser nulo");
+		}
+
 		String cep = cliente.getEndereco().getCep();
+		if (cep == null || cep.isEmpty()) {
+			throw new IllegalArgumentException("CEP inválido: " + cep);
+		}
+
 		Endereco endereco = enderecoRepository.findById(cep).orElseGet(() -> {
-			// Caso não exista, integrar com o ViaCEP e persistir o retorno.
 			Endereco novoEndereco = viaCepService.consultarCep(cep);
 			enderecoRepository.save(novoEndereco);
 			return novoEndereco;
 		});
+
 		cliente.setEndereco(endereco);
-		// Inserir Cliente, vinculando o Endereco (novo ou existente).
 		clienteRepository.save(cliente);
 	}
-
 }
